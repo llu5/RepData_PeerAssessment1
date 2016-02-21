@@ -4,22 +4,145 @@ output:
   html_document:
     keep_md: true
 ---
+Name: Li Lu (llu5@yahoo.com)
+Date of submission: 02/21/2016
+
 
 
 ## Loading and preprocessing the data
 
+install.packages("dplyr")
+install.packages("downloader")
+install.packages("nitr")
+install.packages("ggpot2")
+library(ggplot2)
 
+library(dplyr)
+### create folder data and download file by using downloader package
+if(!file.exists("./data")){dir.create("./data")}
+fileUrl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+
+require(downloader)
+
+download(fileUrl, "data/repdata_data_activity.zip", mode = "wb") 
+
+### unzip the repdata_data_activity.zip file to create a folder named "repdata_data_activity"
+unzip(zipfile="./data/repdata_data_activity.zip",exdir="./data")
+
+### Load the data (i.e. read.csv())
+
+activity_data <-read.csv("./data/activity.csv",  header = TRUE) 
 
 ## What is mean total number of steps taken per day?
+total_step_per_day <- tapply(activity_data$steps, activity_data$date, sum)
 
+
+hist(total_step_per_day, breaks = 60, main = "Frequency of number of steps per day", 
+     xlab = "Number of steps per day", ylab = "Frequency", col = "green")
+     
+###  the mean of the total number of steps taken per day
+
+step_day_mean <- mean(total_step_per_day, na.rm=TRUE)
+
+### the median of the total number of steps taken per day
+
+step_day_median <-median(total_step_per_day, na.rm = TRUE)
 
 
 ## What is the average daily activity pattern?
 
+mean_step_per_interval <- tapply(activity_data$steps, activity_data$interval, mean, na.rm = TRUE)
 
+ plot(mean_step_per_interval, type = "l", main = ("Steps vs. Interval (daily average)"), 
+      ylab = "Number of steps", xlab= "Interval(daily average)")
+ 
+### Interval with the maximum number of steps:
+ seq(along.with = mean_step_per_interval)[mean_step_per_interval == max(mean_step_per_interval)]
+ 
+ 
 
 ## Imputing missing values
+###sum(as.numeric(is.na(activityData$steps)))
+ 
+ nrow(activity_data[is.na(activity_data$steps),])
+ 
+### steps_by_interval <- aggregate(steps ~ interval, activity_data, mean)
+ 
+ plot(steps_by_interval$interval,steps_by_interval$steps, type="l", xlab="Interval", ylab="Number of Steps",main="Average Number of Steps per Day by Interval")
+
+ impute_activity_data <- transform(activity_data, steps = ifelse(is.na(activity_data$steps), steps_by_interval$steps[match(activity_data$interval, steps_by_interval$interval)], activity_data$steps))
+
+### impute first date step to 0 because step number for the first day are all 0.
+ 
+ impute_activity_data[as.character(impute_activity_data$date) == "2012-10-01", 1] <- 0  
+ 
+### create histogram of both imputed and non-imputed to show the difference:
+ aggr_steps_by_day <- aggregate(steps ~ date,  impute_activity_data, sum)
+ hist( aggr_steps_by_day$steps, main = paste("Total Steps Each Day"), col="blue", xlab="Number of steps")
+ 
+ #Create Histogram to show difference. 
+ 
+ steps_per_day <- aggregate(steps ~ date, activity_data, sum)
+ 
+ 
+ hist(steps_per_day$steps, main = paste("Total steps per day"), col="green", xlab="Number of steps", add=T)
+ legend("topright", c("imputed", "non-imputed"), col=c("blue", "green"), lwd=10)
+ 
+### Calculate  mean and median for imputed data.
+ 
+imputed_mean <- mean(aggr_steps_by_day$steps)  
+imputed_median<- median(aggr_steps_by_day$steps)
+
+### Calculate the difference between imputed and non-imputed mean and median values.
+
+diff_mean <- imputed_mean - step_day_mean 
+diff_median <- imputed_median - step_day_median
+
+The difference between imputed and non-imputed mean of steps per day is: -176.4949
+The difference between imputed and non-imputed median of steps per day is: 1.188679
+
+### The impact of imputation to the total steps
+
+
+total_diff <- sum(steps_by_day_i$steps) - sum(steps_by_day$steps)
+
+After imputation, there are  75363.32 more steps in the new imputed dataset than in original non-imputed dataset.
 
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+### Step 1,  set two groups of weekends and weekdays
+ weekdays <- c("Monday", "Tuesday", "Wednesday", "Thursday", 
+               "Friday")
+### Step 2, add indicator of day of week group to the dataset: $dow
+ activity_data$dow = as.factor(ifelse(is.element(weekdays(as.Date(impute_activity_data$date)),weekdays), "Weekday", "Weekend"))
+ 
+
+### Step 3, create mean step dataset
+ mean_steps = tapply(activity_data$steps, activity_data$interval, mean, na.rm = TRUE)
+### Step 4,  Create intervals columns as dates
+ intervals = strptime(formatC(as.numeric(names(mean_steps)), width = 4, flag = "0"), "%H%M")
+ 
+### Step 5, create charts for weekdays and weekend in separate graph with same Y axis for comparizon.
+From the charts of weekdays and weekends, the peek values is found in the weekdays chart.The overall steps are found in the weekends.
+
+
+ 
+#### weekdays chart
+
+par(mfrow = c(2, 1))
+ weekdays = activity_data[activity_data$dow == "Weekday", ]
+ mean_weekdays <- data.frame(interval = intervals, 
+                             steps = tapply(weekdays$steps, weekdays$interval, mean, na.rm = TRUE))
+ plot(mean_weekdays, type = "l", main = "Weekdays", xlab = "Intervals", ylab = "Steps", col = "red",  ylim=c(0,250))
+ 
+
+#### weekends chart
+ weekends = activity_data[activity_data$dow == "Weekend", ]
+ mean_weekends = data.frame(interval = intervals, 
+                            steps = tapply(weekends$steps, weekends$interval, mean, na.rm = TRUE))
+ plot(mean_weekends, type = "l", main = "Weekends", xlab = "Intervals", ylab = "Steps", col = "green",  ylim=c(0,250))
+ 
+ 
+
